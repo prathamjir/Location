@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Driver Form with Location Link</title>
+  <title>Driver Form with Location & Photo</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -33,6 +33,11 @@
     button:hover {
       background: #218838;
     }
+    video, canvas {
+      width: 100%;
+      margin: 0.5rem 0;
+      border-radius: 10px;
+    }
     #status {
       margin-top: 1rem;
       color: #555;
@@ -51,16 +56,24 @@
       <input type="tel" id="phone" name="phone" required />
 
       <input type="hidden" id="locationLink" name="locationLink" />
+      <input type="hidden" id="photoData" name="photoData" />
 
-      <button type="submit" id="submitBtn">Submit</button>
+      <video id="video" autoplay playsinline></video>
+      <canvas id="canvas" style="display: none;"></canvas>
+
+      <button type="submit">Submit</button>
     </form>
-    <p id="status">Fetching location...</p>
+    <p id="status">Fetching location & camera...</p>
   </div>
 
   <script>
     const status = document.getElementById("status");
     const locationLinkInput = document.getElementById("locationLink");
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const photoDataInput = document.getElementById("photoData");
 
+    // Get location
     function getLocation() {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
@@ -69,66 +82,84 @@
             const lng = position.coords.longitude;
             const mapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
             locationLinkInput.value = mapUrl;
-            status.textContent = "Location link generated.";
+            status.textContent = "Location fetched.";
           },
-          () => {
-            status.textContent = "Unable to fetch location.";
-          }
+          () => status.textContent = "Unable to fetch location."
         );
       } else {
         status.textContent = "Geolocation not supported.";
       }
     }
 
-    window.onload = getLocation;
+    // Start camera
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+        status.textContent += " Camera active.";
+      } catch (err) {
+        status.textContent += " Failed to access camera.";
+      }
+    }
 
+    // Capture photo from video
+    function capturePhoto() {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext("2d").drawImage(video, 0, 0);
+      const photoData = canvas.toDataURL("image/png"); // base64 encoded
+      photoDataInput.value = photoData;
+    }
+
+    // On page load
+    window.onload = () => {
+      getLocation();
+      startCamera();
+    };
+
+    // On form submit
     document.getElementById("driverForm").addEventListener("submit", async (e) => {
       e.preventDefault();
 
-      // Wait for location (retry up to 5 times)
-      let retries = 0;
-      while (!locationLinkInput.value && retries < 5) {
-        status.textContent = "Waiting for location...";
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        retries++;
-      }
+      status.textContent = "Submitting...";
 
+      // Ensure location is ready
       if (!locationLinkInput.value) {
-        alert("Location not ready. Please try again.");
+        alert("Location not ready. Please wait.");
         return;
       }
 
+      // Capture photo
+      capturePhoto();
+
+      // Prepare form data
       const formData = new FormData(e.target);
       const params = new URLSearchParams();
       for (const [key, value] of formData.entries()) {
         params.append(key, value);
       }
 
+      // Send to Google Apps Script
       fetch("https://script.google.com/macros/s/AKfycbwiYS5kSG1n9f1gvSauDjc-Wo6Cnmf2tGcriWQZ1dWZ-PE9HNHH28qF6h3u26EXoUU/exec", {
         method: "POST",
-        body: params,
+        body: params
       })
-        .then((res) => res.json())
-        .then((res) => {
-          if (res.status === "success") {
-            alert("Form submitted successfully!");
-            document.getElementById("driverForm").reset();
-            getLocation(); // Refresh location for next entry
-          } else {
-            alert("Something went wrong.");
-          }
-        })
-        .catch((err) => {
-          console.error("Error:", err);
-          alert("Error submitting the form.");
-        });
+      .then((res) => res.json())
+      .then((res) => {
+        if (res.status === "success") {
+          alert("Form submitted successfully!");
+          document.getElementById("driverForm").reset();
+          getLocation();
+        } else {
+          alert("Something went wrong.");
+        }
+      })
+      .catch((err) => {
+        console.error("Error:", err);
+        alert("Error submitting the form.");
+      });
     });
   </script>
 </body>
 </html>
-
-  </script>
-</body>
-</html>
-
 
