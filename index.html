@@ -50,9 +50,6 @@
       <label for="phone">Phone Number</label>
       <input type="tel" id="phone" name="phone" required />
 
-      <label for="vehicle">Vehicle Number</label>
-      <input type="text" id="vehicle" name="vehicle" required />
-
       <input type="hidden" id="locationLink" name="locationLink" />
 
       <button type="submit" id="submitBtn">Submit</button>
@@ -83,13 +80,12 @@
       }
     }
 
-    // Fetch location on page load
     window.onload = getLocation;
 
     document.getElementById("driverForm").addEventListener("submit", async (e) => {
       e.preventDefault();
 
-      // Wait until location is ready (up to 5 seconds)
+      // Wait for location (retry up to 5 times)
       let retries = 0;
       while (!locationLinkInput.value && retries < 5) {
         status.textContent = "Waiting for location...";
@@ -127,6 +123,10 @@
           alert("Error submitting the form.");
         });
     });
+  </script>
+</body>
+</html>
+
   </script>
 </body>
 </html>
