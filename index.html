@@ -55,7 +55,7 @@
 
       <input type="hidden" id="locationLink" name="locationLink" />
 
-      <button type="submit">Submit</button>
+      <button type="submit" id="submitBtn">Submit</button>
     </form>
     <p id="status">Fetching location...</p>
   </div>
@@ -83,14 +83,26 @@
       }
     }
 
-    // Fetch location on load
+    // Fetch location on page load
     window.onload = getLocation;
 
-    document.getElementById("driverForm").addEventListener("submit", (e) => {
+    document.getElementById("driverForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const formData = new FormData(e.target);
 
-      // Convert form data to URL-encoded format to avoid CORS issues
+      // Wait until location is ready (up to 5 seconds)
+      let retries = 0;
+      while (!locationLinkInput.value && retries < 5) {
+        status.textContent = "Waiting for location...";
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        retries++;
+      }
+
+      if (!locationLinkInput.value) {
+        alert("Location not ready. Please try again.");
+        return;
+      }
+
+      const formData = new FormData(e.target);
       const params = new URLSearchParams();
       for (const [key, value] of formData.entries()) {
         params.append(key, value);
@@ -98,23 +110,25 @@
 
       fetch("https://script.google.com/macros/s/AKfycbwiYS5kSG1n9f1gvSauDjc-Wo6Cnmf2tGcriWQZ1dWZ-PE9HNHH28qF6h3u26EXoUU/exec", {
         method: "POST",
-        body: params, // ✅ Send as URL-encoded form
+        body: params,
       })
-      .then((res) => res.json())
-      .then((res) => {
-        if (res.status === "success") {
-          alert("Form submitted successfully!");
-          document.getElementById("driverForm").reset();
-          getLocation(); // Refresh location
-        } else {
-          alert("Something went wrong.");
-        }
-      })
-      .catch((err) => {
-        console.error("Error:", err);
-        alert("Error submitting the form.");
-      });
+        .then((res) => res.json())
+        .then((res) => {
+          if (res.status === "success") {
+            alert("Form submitted successfully!");
+            document.getElementById("driverForm").reset();
+            getLocation(); // Refresh location for next entry
+          } else {
+            alert("Something went wrong.");
+          }
+        })
+        .catch((err) => {
+          console.error("Error:", err);
+          alert("Error submitting the form.");
+        });
     });
   </script>
 </body>
 </html>
+
+
